@@ -9,28 +9,28 @@ from typing import List
 from decimal import Decimal
 from sqlalchemy import Numeric
 
-# создание движка
-engine = create_async_engine("postgresql+asyncpg://postgres:0000@localhost:5432/trainy_db", echo=True)
+engine = create_async_engine("postgresql+asyncpg://postgres:0000@localhost:5433/trainy_db", echo=True)
 
-# создание фабрики сессий
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
+async def get_db():
+    db = async_session()
+    try:
+        yield db
+    finally:
+        await db.close()
 
 #################
-# МОДЕЛИ ДАННЫХ #
+# DATA MODELS   #
 #################
 
-# базовый класс для моделей
 class Base(DeclarativeBase):
     pass
 
 
-
-
-# enum для ролей пользователей
 class UserRole(enum.Enum):
-    ADMIN = "administrator"
-    USER = "user_logged"
+    administrator = "administrator"
+    user_logged = "user_logged"
     
 class User(Base):
     __tablename__ = "users"
@@ -38,7 +38,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(254), nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     full_name: Mapped[str] = mapped_column(nullable=False)
-    role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), name="role_enum", nullable=False)
+    role: Mapped[UserRole] = mapped_column(SAEnum(UserRole, name="role_enum"), nullable=False)
     phone_number: Mapped[str] = mapped_column(String(17), nullable=False)
     registered_at: Mapped[datetime.datetime] = mapped_column(_types.TIMESTAMP, nullable=False)
 
@@ -49,13 +49,11 @@ class User(Base):
 
 
 
-# enum для типов поездов по дистанции
 class DistanceType(enum.Enum):
     LONG = "long_distance"
     LOCAL = "local"
     COMMUTER = "commuter"
 
-# enum для типов поездов по скорости
 class SpeedType(enum.Enum):
     PASSENGER = "passenger"
     EXPRESS = "express"
@@ -77,14 +75,14 @@ class Train(Base):
 
 
 class CarrType(enum.Enum): 
-    SEATED = "seated"
-    REVERSED = "reversed"
-    GENERAL = "general"
-    COMPARTMENT = "compartment"
-    LUXURY = "luxury"
-    SOFT = "soft"
-    INTERNATIONAL_4 = "international4"
-    INTERNATIONAL_3 = "international3"
+    seated = "seated"
+    reversd = "reversed"
+    general = "general"
+    compartment = "compartment"
+    luxury = "luxury"
+    soft = "soft"
+    international4 = "international4"
+    international3 = "international3"
 
 class Carriage(Base):
     __tablename__ = "carriages"
@@ -113,7 +111,15 @@ class Trip(Base):
     __tablename__ = "trips"
     trip_id: Mapped[int] = mapped_column(primary_key=True)
     train_id: Mapped[int] = mapped_column(ForeignKey("trains.train_id"), nullable=False) 
-    status: Mapped[TripStatusType] = mapped_column(SAEnum(TripStatusType), name="tr_st_type", nullable=False)
+    #status: Mapped[TripStatusType] = mapped_column(SAEnum(TripStatusType, native_enum=False), nullable=False)
+    status: Mapped[TripStatusType] = mapped_column(
+    SAEnum(
+        TripStatusType, 
+        native_enum=False, 
+        values_callable=lambda x: [item.value for item in x] # Вот это заставит искать "scheduled"
+    ), 
+    nullable=False
+)
     base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     carriages: Mapped[List["Carriage"]] = relationship(back_populates="trip") 
@@ -159,7 +165,7 @@ class Order(Base):
     user: Mapped["User"] = relationship(back_populates="orders")
     passenger: Mapped["Passenger"] = relationship(back_populates="order")
     seat: Mapped["Seat"] = relationship(back_populates="order") 
-    trip_stops: Mapped[List["TripStop"]] = relationship()
+    #trip_stops: Mapped[List["TripStop"]] = relationship() тут сервер падал из-за эээ неоднозначности связи наверное
 
     departure_stop: Mapped["TripStop"] = relationship(
         "TripStop",
@@ -206,12 +212,13 @@ class TripStop(Base):
     __tablename__ = "trip_stops"
     stop_id: Mapped[int] = mapped_column(primary_key=True)
     trip_id: Mapped[int] = mapped_column(ForeignKey("trips.trip_id"), nullable=False)
-    station_id: Mapped[int] = mapped_column(nullable=False)
-    arrival_time: Mapped[datetime.datetime] = mapped_column(_types.TIMESTAMP, nullable=False) 
-    departure_time: Mapped[datetime.datetime] = mapped_column(_types.TIMESTAMP, nullable=False) 
+    station_id: Mapped[int] = mapped_column(ForeignKey("stations.station_id"), nullable=False)
+    stop_order: Mapped[int] = mapped_column(nullable=False)
+    arrival_time: Mapped[str] = mapped_column(String(50), nullable=False) 
+    departure_time: Mapped[str] = mapped_column(String(50), nullable=False) 
 
     trip: Mapped["Trip"] = relationship(back_populates="trip_stops")
-
+    station: Mapped["Station"] = relationship(back_populates="trip_stops")
     departure_orders: Mapped[List["Order"]] = relationship(
         back_populates="departure_stop",
         foreign_keys=[Order.departure_stop_id]
@@ -226,14 +233,14 @@ class TripStop(Base):
 
 
 
-
-
 class Station(Base):
     __tablename__ = "stations"
     station_id: Mapped[int] = mapped_column(primary_key=True)
     station_name: Mapped[str] = mapped_column(nullable=False)
     city: Mapped[str] = mapped_column(nullable=False)
     code: Mapped[int] = mapped_column(nullable=False)
+
+    trip_stops: Mapped[List["TripStop"]] = relationship(back_populates="station")
 
 
 
