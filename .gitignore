@@ -9,3 +9,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+passengers.csv
+carriages.csv
+stations.csv
+trains.csv
+trips.csv
+users.csv
