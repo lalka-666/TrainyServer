@@ -2,6 +2,7 @@ from faker import Faker
 import random
 import csv
 import psycopg2
+from datetime import timedelta
 
 conn = psycopg2.connect(
     host='localhost',
@@ -269,3 +270,82 @@ def generate_carriages():
     conn.commit()
 
     print('Carriages generated!')
+
+
+
+def generate_seats():
+    seats = []
+    with open('carriages.csv', 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader):
+            for j in range(int(row['total_seats'])):
+                seats.append({
+                    'carriage_id': i+1,
+                    'seat_number': j+1,
+                    'is_available': random.choice((True, False)),
+                    'price': random.randrange(500, 10000, 50)
+                })
+
+    with open('seats.csv', 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['carriage_id', 'seat_number', 'is_available', 'price'])
+        writer.writeheader()
+        writer.writerows(seats)
+
+    with open('seats.csv', 'r', encoding='utf-8') as f:
+        cursor.copy_expert("""
+            COPY seats(carriage_id, seat_number, is_available, price)
+            FROM STDIN
+            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
+        """, f)
+    conn.commit()
+    print("Seats generated!")
+
+
+def generate_trip_stops():
+    trip_stops = []
+
+    for i in range(200):
+
+        current_time = fake.date_time_this_year()
+
+        station_ids = random.sample(range(1,90), 10)
+
+        # generate arrival/departure datetime with 3-7 hours delta and 10-20 mins dwell/layover
+        for j in range(10):
+            pairs = []
+
+            current_time += timedelta(hours=(random.randint(3,7)))
+            arrival_time = current_time
+
+            gap = random.choice([10, 15, 20])
+            departure_time = arrival_time + timedelta(minutes=gap)
+
+            arrival_string = arrival_time.strftime('%d.%m.%Y %H:%M')
+            departure_string = departure_time.strftime('%d.%m.%Y %H:%M')
+
+            pairs.append(arrival_string)
+            pairs.append(departure_string)
+
+            trip_stops.append({
+                'trip_id': i+1,
+                'station_id': station_ids[j],
+                'stop_order': j+1,
+                'arrival_time': pairs[0],
+                'departure_time': pairs[1]
+            })
+
+    with open('trip_stops.csv', 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['trip_id', 'station_id', 'stop_order', 'arrival_time', 'departure_time'])
+        writer.writeheader()
+        writer.writerows(trip_stops)
+
+    with open('trip_stops.csv', 'r', encoding='utf-8') as f:
+        cursor.copy_expert("""
+            COPY trip_stops(trip_id, station_id, stop_order, arrival_time, departure_time)
+            FROM STDIN
+            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
+        """, f)
+    conn.commit()
+    print("Trip_stops generated!")
+
+generate_trip_stops()

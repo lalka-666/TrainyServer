@@ -16,3 +16,5 @@ stations.csv
 trains.csv
 trips.csv
 users.csv
+seats.csv
+trip_stops.csv
