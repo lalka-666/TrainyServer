@@ -14,11 +14,34 @@ conn = psycopg2.connect(
 cursor = conn.cursor()
 fake = Faker('ru_RU')
 
-# generate and copy data to 'users'
+
+# write data in csv file and copy it to database
+def copy_table(table_name: str, data: list[dict]): 
+    columns = list(data[0].keys())
+
+    with open(f'{table_name}.csv', 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(data)
+
+    cursor.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE;")
+    conn.commit()
+
+    with open(f'{table_name}.csv', 'r', encoding='utf-8') as f:
+        cursor.copy_expert(f"""
+            COPY {table_name}({', '.join(map(str, columns))})
+            FROM STDIN
+            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
+        """, f)
+
+    conn.commit()
+    print(f'{table_name} copied!')
+
 
 def generate_users():
     users = []
-    ROLE = ['administrator', 'user_logged', 'user_logged', 'user_logged', 'user_logged', 'user_logged', 'user_logged']
+    ROLE = ['administrator', 'user_logged', 'user_logged', 'user_logged', 
+            'user_logged', 'user_logged', 'user_logged']
     for _ in range(200):
         users.append({
             'email': fake.email(),
@@ -27,31 +50,10 @@ def generate_users():
             'role': random.choice(ROLE),
             'phone_number': fake.phone_number()
         })
-
-    with open('users.csv', 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['email', 'password', 'full_name', 'role', 'phone_number'])
-        writer.writeheader()
-        writer.writerows(users)
-
+    
+    copy_table("users", users)
     print('Users generated!')
 
-
-def copy_users():
-    generate_users()
-    cursor.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE;")
-    with open('users.csv', 'r', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY users(email, password, full_name, role, phone_number)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-
-    conn.commit()
-    print('Users copied!')
-
-
-
-# generate and copy data to 'trains'
 
 def generate_trains():
     trains = []
@@ -77,29 +79,14 @@ def generate_trains():
             'speed_type': random.choice(speed_type)
         })
 
-    with open('trains.csv', 'w', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['train_number', 'train_name', 'distance_type', 'speed_type'])
-        writer.writeheader()
-        writer.writerows(trains)
+    copy_table("trains", trains)
     print('Trains generated!')
 
-def copy_trains():
-    generate_trains()
-    cursor.execute("TRUNCATE TABLE trains RESTART IDENTITY CASCADE;")
-    with open('trains.csv', 'r', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY trains(train_number, train_name, distance_type, speed_type)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
-    print('Trains copied!')
 
-
-# generate and copy data to 'trips'
 def generate_trips():
     trips = []
-    status = ['scheduled', 'boarding', 'departed', 'completed', 'delayed', 'cancelled']
+    status = ['scheduled', 'boarding', 'departed', 
+              'completed', 'delayed', 'cancelled']
     for _ in range(200):
         trips.append({
             'train_id': random.randint(1, 60),
@@ -107,25 +94,9 @@ def generate_trips():
             'base_price': random.randrange(600, 20000, 100)
         })
 
-    with open('trips.csv', 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['train_id', 'status', 'base_price'])
-        writer.writeheader()
-        writer.writerows(trips)
-
+    copy_table("trips", trips)
     print('Trips generated!')
 
-    cursor.execute("TRUNCATE TABLE trips RESTART IDENTITY CASCADE;")
-    with open('trips.csv', 'r', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY trips(train_id, status, base_price)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
-    print('Trips copied!')
-
-
-# generate and copy data to 'stations'
 
 def generate_stations():
     station_names = [
@@ -180,23 +151,9 @@ def generate_stations():
             'code': codes[i]
         })
 
-    cursor.execute("TRUNCATE TABLE stations RESTART IDENTITY CASCADE;")
-    with open('stations.csv', 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['station_name', 'city', 'code'])
-        writer.writeheader()
-        writer.writerows(stations)
-
-    with open('stations.csv', 'r', newline='', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY stations(station_name, city, code)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
-
+    copy_table("stations", stations)
     print('Stations generated!')
 
-# generate and copy data to 'passengers'
 
 def generate_passengers():
     passengers = []
@@ -222,30 +179,14 @@ def generate_passengers():
             'is_default': True
         })
 
-    cursor.execute("TRUNCATE TABLE passengers RESTART IDENTITY CASCADE;")
-    conn.commit()
-
-    with open('passengers.csv', 'w+', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['user_id', 'full_name', 'document_type', 
-                                                'document_number', 'birthday', 'phone_number', 'is_default'])
-        writer.writeheader()
-        writer.writerows(passengers)
-
-    with open('passengers.csv', 'r', newline='', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY passengers(user_id, full_name, document_type, document_number, birthday, phone_number, is_default)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
-
+    copy_table("passengers", passengers)
     print('Passengers generated!')
 
 
-# generate and copy data to 'carriages'
 def generate_carriages():
     carriages = []
-    carriage_types = ['seated', 'reserved', 'general', 'compartment', 'luxury', 'soft', 'international4', 'international3']
+    carriage_types = ['seated', 'reserved', 'general', 'compartment', 
+                      'luxury', 'soft', 'international4', 'international3']
 
     for _ in range(10000):
         carriages.append({
@@ -255,22 +196,8 @@ def generate_carriages():
             'total_seats': random.randint(20, 70)
         })
 
-    cursor.execute("TRUNCATE TABLE carriages RESTART IDENTITY CASCADE;")
-    with open('carriages.csv', 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['trip_id', 'carriage_number', 'carriage_type', 'total_seats'])
-        writer.writeheader()
-        writer.writerows(carriages)
-
-    with open('carriages.csv', 'r', newline='', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY carriages(trip_id, carriage_number, carriage_type, total_seats)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
-
+    copy_table("carriages", carriages)
     print('Carriages generated!')
-
 
 
 def generate_seats():
@@ -286,18 +213,7 @@ def generate_seats():
                     'price': random.randrange(500, 10000, 50)
                 })
 
-    with open('seats.csv', 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['carriage_id', 'seat_number', 'is_available', 'price'])
-        writer.writeheader()
-        writer.writerows(seats)
-
-    with open('seats.csv', 'r', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY seats(carriage_id, seat_number, is_available, price)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
+    copy_table("seats", seats)
     print("Seats generated!")
 
 
@@ -305,9 +221,7 @@ def generate_trip_stops():
     trip_stops = []
 
     for i in range(200):
-
         current_time = fake.date_time_this_year()
-
         station_ids = random.sample(range(1,90), 10)
 
         # generate arrival/departure datetime with 3-7 hours delta and 10-20 mins dwell/layover
@@ -334,18 +248,5 @@ def generate_trip_stops():
                 'departure_time': pairs[1]
             })
 
-    with open('trip_stops.csv', 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['trip_id', 'station_id', 'stop_order', 'arrival_time', 'departure_time'])
-        writer.writeheader()
-        writer.writerows(trip_stops)
-
-    with open('trip_stops.csv', 'r', encoding='utf-8') as f:
-        cursor.copy_expert("""
-            COPY trip_stops(trip_id, station_id, stop_order, arrival_time, departure_time)
-            FROM STDIN
-            WITH (FORMAT CSV, HEADER true, DELIMITER ',')
-        """, f)
-    conn.commit()
+    copy_table("trip_stops", trip_stops)
     print("Trip_stops generated!")
-
-generate_trip_stops()
