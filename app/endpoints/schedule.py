@@ -1,62 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import Depends, APIRouter
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
-from sqlalchemy import func
-from sqlalchemy import select
-from .schemas import ScheduleResponse, ScheduleSearch, Schedule, UserCreate, UserResponse, UserLogin
-from .database import get_db, User, TripStop, Station, Trip
-from datetime import datetime
-from fastapi.middleware.cors import CORSMiddleware
+from ..schemas import ScheduleResponse, ScheduleSearch, Schedule
+from ..database import get_db, TripStop, Station, Trip
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],           
-    allow_credentials=True,
-    allow_methods=["*"],           
-    allow_headers=["*"],           
-)
+router = APIRouter()
 
-@app.post("/auth/register", response_model=UserResponse)
-async def userRegister(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == user.email))
-    existing = result.scalar_one_or_none()
-
-    if existing:
-        raise HTTPException(400, "User already exist")
-    
-    new_user = User(
-        email=user.email,
-        full_name=user.full_name,
-        password=user.password,
-        role="user_logged",
-        phone_number="",
-        registered_at=datetime.now()
-    )
-
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    return new_user
-
-
-@app.post("/auth/login", response_model=UserResponse)
-async def userLogin(user: UserLogin, db: AsyncSession = Depends(get_db)):
-    select_user = await db.execute(select(User).where(User.email == user.email))
-    existing_user = select_user.scalar_one_or_none()
-
-    if existing_user is None or existing_user.password != user.password:
-        raise HTTPException(400, "Invalid email or password")
-    
-    return UserResponse(
-        id=existing_user.user_id,
-        email=existing_user.email,
-        full_name=existing_user.full_name
-    )
-
-
-@app.get("/search/schedule", response_model=ScheduleResponse)
+@router.get("/search/schedule", response_model=ScheduleResponse)
 async def searchSchedule(
     search_data: ScheduleSearch = Depends(),
     db: AsyncSession = Depends(get_db)
@@ -67,8 +18,11 @@ async def searchSchedule(
     result = await db.execute(  
         select(
             TripStop.trip_id,
+            Station.city.label("departure_city"),
+            StationArr.city.label("destination_city"),
             func.right(TripStop.departure_time, 5).label("departure_time"),
-            func.right(TripStop.arrival_time, 5).label("arrival_time")
+            func.right(TripStop.arrival_time, 5).label("arrival_time"),
+            TripStopArr.arrival_time.label("arrival_time")
         )
         .join(Station, TripStop.station_id == Station.station_id)
         .join(Trip, TripStop.trip_id == Trip.trip_id)
@@ -89,8 +43,11 @@ async def searchSchedule(
 
     for row in rows:
         trip_id = row[0]
-        departure_time = row[1]
-        arrival_time = row[2]
+        departure_city = row[1]
+        destination_city = row[2]
+        departure_time = row[3]
+        arrival_time = row[4]
+        destination_time = row[5]
 
         first = await db.execute(
             select(Station.station_name)
@@ -115,7 +72,10 @@ async def searchSchedule(
             first_station=first_station,
             last_station=last_station,
             departure_time=departure_time,
-            arrival_time=arrival_time
+            arrival_time=arrival_time,
+            departure_city=departure_city,
+            destination_city=destination_city,
+            destination_time=destination_time
         ))
 
     print(schedules)

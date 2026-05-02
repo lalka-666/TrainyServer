@@ -1,31 +1,16 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .endpoints import auth, schedule, carriages
 
 app = FastAPI()
+app.include_router(auth.router)
+app.include_router(schedule.router)
+app.include_router(carriages.router)
 
-# тестовые эндпоинты
-
-# @app.get("/")
-# async def root(db: Session = Depends(get_db)):
-#     try:
-#         result = db.execute(text("SELECT 1"))
-#         return {"status": "ok"}
-#     except Exception as e:
-#         return {"status": "ok", "message": "db connected!"}
-
-
-# @app.get("/user/me")
-# async def read_user_me():
-#     return {"user_id": "alisa666"}
-
-# @app.get("/user/{user_id}")
-# async def read_user_me(user_id: int):
-#     return {"user_id": user_id}
-
-# @app.get("/items/{item_id}")
-# async def get_item(item_id: int):
-#     return {"item_id": item_id}
-
-
-
-
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],           
+    allow_credentials=True,
+    allow_methods=["*"],           
+    allow_headers=["*"],
+)

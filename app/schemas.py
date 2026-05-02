@@ -28,14 +28,17 @@ class ScheduleSearch(BaseModel):
 class ScheduleResponse(BaseModel):
     schedules: List[Schedule]
 
-# so far so
 class Schedule(BaseModel):
     trip_id: int
     first_station: str
     last_station: str
     departure_time: str
     arrival_time: str
+    departure_city: str
+    destination_city: str
+    destination_time: str
 
-class CarriageTypes(BaseModel):
-    id: int
-    name: str
+
+# carriage schemas 
+class CarrTypeResponse(BaseModel):
+    carriage_types: List[str]

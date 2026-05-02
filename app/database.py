@@ -10,7 +10,6 @@ from decimal import Decimal
 from sqlalchemy import Numeric
 
 engine = create_async_engine("postgresql+asyncpg://postgres:0000@localhost:5433/trainy_db", echo=True)
-
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 async def get_db():
@@ -20,9 +19,6 @@ async def get_db():
     finally:
         await db.close()
 
-#################
-# DATA MODELS   #
-#################
 
 class Base(DeclarativeBase):
     pass
@@ -44,8 +40,6 @@ class User(Base):
 
     passengers: Mapped[List["Passenger"]] = relationship(back_populates="user")
     orders: Mapped[List["Order"]] = relationship(back_populates="user")
-
-
 
 
 
@@ -72,11 +66,9 @@ class Train(Base):
 
 
 
-
-
 class CarrType(enum.Enum): 
     seated = "seated"
-    reversd = "reversed"
+    reserved = "reserved"
     general = "general"
     compartment = "compartment"
     luxury = "luxury"
@@ -89,13 +81,11 @@ class Carriage(Base):
     carriage_id: Mapped[int] = mapped_column(primary_key=True)
     trip_id: Mapped[int] = mapped_column(ForeignKey("trips.trip_id"), nullable=False)
     carriage_number: Mapped[int] = mapped_column(nullable=False)
-    carriage_type: Mapped[CarrType] = mapped_column(SAEnum(CarrType), name="carr_type", nullable=False)
+    carriage_type: Mapped[CarrType] = mapped_column(SAEnum(CarrType, name="carr_type"), nullable=False)
     total_seats: Mapped[int] = mapped_column(nullable=False)
 
     trip: Mapped["Trip"] = relationship(back_populates="carriages")
     seats: Mapped[List["Seat"]] = relationship(back_populates="carriage")
-
-
 
 
 
@@ -128,7 +118,6 @@ class Trip(Base):
 
 
 
-
 class Seat(Base):
     __tablename__ = "seats"
     seat_id: Mapped[int] = mapped_column(primary_key=True)
@@ -139,7 +128,6 @@ class Seat(Base):
 
     carriage: Mapped["Carriage"] = relationship(back_populates="seats")
     order: Mapped["Order"] = relationship(back_populates="seat")
-
 
 
 
@@ -181,8 +169,6 @@ class Order(Base):
 
 
 
-
-
 class DocType(enum.Enum):
     PASSPORT = "passport"
     INTERN_PASSPORT = "international_passport"
@@ -204,7 +190,6 @@ class Passenger(Base):
 
     user: Mapped["User"] = relationship(back_populates="passengers")
     order: Mapped["Order"] = relationship(back_populates="passenger")
-
 
 
 
@@ -231,8 +216,6 @@ class TripStop(Base):
 
 
 
-
-
 class Station(Base):
     __tablename__ = "stations"
     station_id: Mapped[int] = mapped_column(primary_key=True)
@@ -241,8 +224,6 @@ class Station(Base):
     code: Mapped[int] = mapped_column(nullable=False)
 
     trip_stops: Mapped[List["TripStop"]] = relationship(back_populates="station")
-
-
 
 
 
