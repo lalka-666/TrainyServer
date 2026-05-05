@@ -42,3 +42,12 @@ class Schedule(BaseModel):
 # carriage schemas 
 class CarrTypeResponse(BaseModel):
     carriage_types: List[str]
+
+class Carriage(BaseModel):
+    carriage_number: int
+    number_of_seats: int
+    free_seats: int
+
+class CarriagesResponse(BaseModel):
+    carriages: List[Carriage]
+
