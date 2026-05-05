@@ -19,7 +19,6 @@ class UserLogin(BaseModel):
     password: str
 
 
-
 # search schemas
 class ScheduleSearch(BaseModel):
     departure_station: str
@@ -61,3 +60,14 @@ class Seat(BaseModel):
     seat_number: int
     price: Decimal
 
+
+# passenger schemas
+class Passenger(BaseModel):
+    passenger_id: int
+    full_name: str
+    document_type: str
+    document_number: int
+    is_default: bool
+
+class PassengerResponse(BaseModel):
+    passengers: List[Passenger]
