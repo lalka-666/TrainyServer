@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .endpoints import auth, schedule, carriages
+from .endpoints import auth, schedule, carriages, seat
 
 app = FastAPI()
 app.include_router(auth.router)
 app.include_router(schedule.router)
 app.include_router(carriages.router)
+app.include_router(seat.router)
 
 app.add_middleware(
     CORSMiddleware,

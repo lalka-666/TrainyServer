@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+from decimal import Decimal
 
 
 # authorisation schemas
@@ -50,4 +51,13 @@ class Carriage(BaseModel):
 
 class CarriagesResponse(BaseModel):
     carriages: List[Carriage]
+
+
+# seats schemas
+class SeatResponse(BaseModel):
+    seats: List[Seat]
+
+class Seat(BaseModel):
+    seat_number: int
+    price: Decimal
 
